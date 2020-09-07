@@ -96,6 +96,13 @@ class RemoteSparkMagics(SparkMagicBase):
                e.g. `%%spark -s testsession -c sql -o my_var` will execute the SQL code against the testsession
                         previously created and store the pandas dataframe created in the my_var variable in the
                         Python environment.
+           use
+              Run Spark code against a exist session
+              e.g. `%%spark use -u https://sparkcluster.net/livy -i 1 -l python` will execute the cell code against the existed session 1 
+              e.g. `%%spark use -u https://sparkcluster.net/livy -i 1 -l python -c sql -l python` will execute the SQL code against the existed session 1 
+              e.g. `%%spark use -u https://sparkcluster.net/livy  -i 1 -l python -c sql -o my_var -l python` will execute the SQL code against the existed session 1 
+                        previously created and store the pandas dataframe created in the my_var variable in the
+                        Python environment.
            logs
                Returns the logs for a given session.
                e.g. `%spark logs -s testsession` will return the logs for the testsession previously created
@@ -165,6 +172,25 @@ class RemoteSparkMagics(SparkMagicBase):
         # logs
         elif subcommand == "logs":
             self.ipython_display.write(self.spark_controller.get_logs(args.session))
+        # use
+        elif subcommand == "use":
+            if args.url is None:
+                self.ipython_display.send_error("Need to supply URL argument (e.g. -u https://example.com/livyendpoint)")
+                return
+
+            endpoint = Endpoint(args.url, args.auth, args.user, args.password)
+            properties = conf.get_session_properties(args.language)
+            session = self.spark_controller.tmp_session(endpoint, properties, args.id)
+            coerce = get_coerce_value(args.coerce)
+            if args.context == CONTEXT_NAME_SPARK:
+                return self.execute_spark2(cell, args.output, args.samplemethod,
+                                          args.maxrows, args.samplefraction, session, coerce)
+            elif args.context == CONTEXT_NAME_SQL:
+                return self.execute_sqlquery2(cell, args.samplemethod, args.maxrows, args.samplefraction,
+                                             session, args.output, args.quiet, coerce)
+            else:
+                self.ipython_display.send_error("Context '{}' not found".format(args.context))
+           
         # run
         elif len(subcommand) == 0:
             coerce = get_coerce_value(args.coerce)

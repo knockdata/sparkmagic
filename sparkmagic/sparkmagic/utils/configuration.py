@@ -67,6 +67,10 @@ def session_configs():
 
 
 @_with_override
+def kernel_credentials():
+    return {u'username': u'', u'base64_password': u'', u'url': u'http://localhost:8998', u'auth': constants.NO_AUTH}
+     
+@_with_override
 def kernel_python_credentials():
     return {u'username': u'', u'base64_password': u'', u'url': u'http://localhost:8998', u'auth': constants.NO_AUTH}
     
@@ -219,6 +223,18 @@ def server_extension_default_kernel_name():
 def custom_headers():
     return {}
 
+    
+@_with_override
+def s3_bucket():
+    return "s3_bucket"
+
+@_with_override
+def s3_access_key():
+    return "s3_access_key"
+
+@_with_override
+def s3_secret_key():
+    return "s3_secret_key"
 
 @_with_override
 def retry_policy():

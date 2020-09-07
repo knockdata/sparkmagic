@@ -97,6 +97,26 @@ class SparkMagicBase(Magics):
                 df = self.spark_controller.run_command(spark_store_command, session_name)
                 self.shell.user_ns[output_var] = df
 
+    def execute_spark2(self, cell, output_var, samplemethod, maxrows, samplefraction, session, coerce):
+        (success, out, mimetype) = self.spark_controller.run_command2(Command(cell), session)
+        if not success:
+            if conf.shutdown_session_on_spark_statement_errors():
+                self.spark_controller.cleanup()
+
+            raise SparkStatementException(out)
+        else:
+            if isinstance(out, string_types):
+                if mimetype == MIMETYPE_TEXT_HTML:
+                    self.ipython_display.html(out)
+                else:
+                    self.ipython_display.write(out)
+            else:
+                self.ipython_display.display(out)
+            if output_var is not None:
+                spark_store_command = self._spark_store_command(output_var, samplemethod, maxrows, samplefraction, coerce)
+                df = self.spark_controller.run_command2(spark_store_command, session)
+                self.shell.user_ns[output_var] = df
+
     @staticmethod
     def _spark_store_command(output_var, samplemethod, maxrows, samplefraction, coerce):
         return SparkStoreCommand(output_var, samplemethod, maxrows, samplefraction, coerce=coerce)

@@ -18,11 +18,15 @@ class SparkController(object):
         # this is to reuse the already created http clients
         # since the reliablehttpclient uses requests session
         self._http_clients = {}
+        self.attached_session = None
 
     def get_app_id(self, client_name=None):
         session_to_use = self.get_session_by_name_or_default(client_name)
         return session_to_use.get_app_id()
 
+    def get_attached_session(self):
+        return self.attached_session;
+ 
     def get_driver_log_url(self, client_name=None):
         session_to_use = self.get_session_by_name_or_default(client_name)
         return session_to_use.get_driver_log_url()
@@ -39,6 +43,9 @@ class SparkController(object):
         session_to_use = self.get_session_by_name_or_default(client_name)
         return command.execute(session_to_use)
 
+    def run_command2(self, command, session):
+        return command.execute(session)
+
     def run_sqlquery(self, sqlquery, client_name=None):
         session_to_use = self.get_session_by_name_or_default(client_name)
         return sqlquery.execute(session_to_use)
@@ -54,17 +61,36 @@ class SparkController(object):
             s.refresh_status_and_info()
         return session_list
 
+    def get_all_raw_sessions_endpoint(self, endpoint):
+        http_client = self._http_client(endpoint)
+        sessions = http_client.get_sessions()[u"sessions"]
+        return sessions
+        
+    def attach_session_by_id(self, endpoint,session_id):
+        sessions = self.get_all_sessions_endpoint(endpoint)
+        for s in sessions:
+            if s.id == session_id:
+                self.attached_session = s
+                break
+        return
+
     def get_all_sessions_endpoint_info(self, endpoint):
         sessions = self.get_all_sessions_endpoint(endpoint)
         return [str(s) for s in sessions]
 
+    def get_all_sessions_endpoint_info2(self, endpoint):
+        sessions = self.get_all_raw_sessions_endpoint(endpoint)
+        return [str(s) for s in sessions]
+
+        
     def cleanup(self):
         self.session_manager.clean_up_all()
-
+        self.attached_session = None
+        
     def cleanup_endpoint(self, endpoint):
         for session in self.get_all_sessions_endpoint(endpoint):
             session.delete()
-
+   
     def delete_session_by_name(self, name):
         self.session_manager.delete_client(name)
 
@@ -79,16 +105,20 @@ class SparkController(object):
             http_client = self._http_client(endpoint)
             session = self._livy_session(http_client, {constants.LIVY_KIND_PARAM: response[constants.LIVY_KIND_PARAM]},
                                         self.ipython_display, session_id)
+            if self.attached_session != None and session_id == self.attached_session.id:
+                self.attached_session = None
             session.delete()
 
     def add_session(self, name, endpoint, skip_if_exists, properties):
-        if skip_if_exists and (name in self.session_manager.get_sessions_list()):
-            self.logger.debug(u"Skipping {} because it already exists in list of sessions.".format(name))
-            return
         http_client = self._http_client(endpoint)
         session = self._livy_session(http_client, properties, self.ipython_display)
-        self.session_manager.add_session(name, session)
+        self.attached_session = session
         session.start()
+
+    def tmp_session(self, endpoint, properties,session_id):
+        http_client = self._http_client(endpoint)
+        session = self._livy_session(http_client, properties, self.ipython_display,session_id)
+        return session
 
     def get_session_id_for_client(self, name):
         return self.session_manager.get_session_id_for_client(name)
@@ -101,7 +131,10 @@ class SparkController(object):
 
     def get_session_by_name_or_default(self, client_name):
         if client_name is None:
-            return self.session_manager.get_any_session()
+            if self.attached_session is None:
+                return self.session_manager.get_any_session()
+            else:
+                return self.attached_session
         else:
             return self.session_manager.get_session(client_name)
 

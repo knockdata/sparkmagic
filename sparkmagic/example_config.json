@@ -1,40 +1,27 @@
 {
-  "kernel_python_credentials" : {
+  "kernel_credentials" : {
     "username": "",
     "password": "",
     "url": "http://localhost:8998",
     "auth": "None"
   },
-
-  "kernel_scala_credentials" : {
-    "username": "",
-    "password": "",
-    "url": "http://localhost:8998",
-    "auth": "None"
-  },
-  "kernel_r_credentials": {
-    "username": "",
-    "password": "",
-    "url": "http://localhost:8998"
-  },
-
   "logging_config": {
     "version": 1,
     "formatters": {
-      "magicsFormatter": { 
+      "magicsFormatter": {
         "format": "%(asctime)s\t%(levelname)s\t%(message)s",
         "datefmt": ""
       }
     },
     "handlers": {
-      "magicsHandler": { 
+      "magicsHandler": {
         "class": "hdijupyterutils.filehandler.MagicsFileHandler",
         "formatter": "magicsFormatter",
         "home_path": "~/.sparkmagic"
       }
     },
     "loggers": {
-      "magicsLogger": { 
+      "magicsLogger": {
         "handlers": ["magicsHandler"],
         "level": "DEBUG",
         "propagate": 0
@@ -43,7 +30,7 @@
   },
 
   "wait_for_idle_timeout_seconds": 15,
-  "livy_session_startup_timeout_seconds": 60,
+  "livy_session_startup_timeout_seconds": 300,
 
   "fatal_error_suggestion": "The code failed because of a fatal error:\n\t{}.\n\nSome things to try:\na) Make sure Spark has enough available resources for Jupyter to create a Spark context.\nb) Contact your Jupyter administrator to make sure the Spark magics library is configured correctly.\nc) Restart the kernel.",
 
@@ -51,8 +38,24 @@
 
   "session_configs": {
     "driverMemory": "1000M",
-    "executorCores": 2
+    "executorCores": 2, 
+    "proxyUser": "owner_name",
+    "conf":{
+        "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+        "spark.hadoop.fs.s3a.fast.upload": "true",
+        "spark.driver.extraJavaOptions": "-Divy.cache.dir=/tmp -Divy.home=/tmp",   
+	"spark.jars.packages": "com.amazonaws:aws-java-sdk:1.7.4,org.apache.hadoop:hadoop-aws:3.2.0",     
+        "spark.metrics.conf.*.sink.prometheusServlet.class": "org.apache.spark.metrics.sink.PrometheusServlet",
+        "spark.metrics.conf.*.sink.prometheusServlet.path": "/metrics/",
+        "spark.metrics.conf.master.sink.prometheusServlet.path": "/metrics/master/prometheus",
+        "spark.metrics.conf.applications.sink.prometheusServlet.path": "/metrics/applications/prometheus",
+        "spark.kubernetes.driver.label.k8s-app":  "spark-metrics",
+        "spark.kubernetes.driver.service.label.k8s-app":  "spark-metrics"
+        }
   },
+  "s3_bucket":  "s3a_bucket",
+  "s3_access_key": "s3a_access_key",
+  "s3_secret_key": "s3a_secret_key",
 
   "use_auto_viz": true,
   "coerce_dataframe": true,
@@ -63,10 +66,10 @@
   "livy_server_heartbeat_timeout_seconds": 0,
   "heartbeat_retry_seconds": 10,
 
-  "server_extension_default_kernel_name": "pysparkkernel",
+  "server_extension_default_kernel_name": "sparkkernel",
   "custom_headers": {},
   
   "retry_policy": "configurable",
   "retry_seconds_to_sleep_list": [0.2, 0.5, 1, 3, 5],
-  "configurable_retry_policy_max_retries": 8
+  "configurable_retry_policy_max_retries": 16
 }

@@ -5,16 +5,15 @@ import json
 import sparkmagic.utils.configuration as conf
 from sparkmagic.utils.constants import LANG_SCALA, LANG_PYTHON
 from sparkmagic.controllerwidget.abstractmenuwidget import AbstractMenuWidget
-
+import sparkmagic.utils.configuration as conf
 
 class CreateSessionWidget(AbstractMenuWidget):
-    def __init__(self, spark_controller, ipywidget_factory, ipython_display, endpoints_dropdown_widget, refresh_method):
+    def __init__(self, spark_controller, ipywidget_factory, ipython_display, endpoint, refresh_method):
         # This is nested
         super(CreateSessionWidget, self).__init__(spark_controller, ipywidget_factory, ipython_display, True)
 
         self.refresh_method = refresh_method
-
-        self.endpoints_dropdown_widget = endpoints_dropdown_widget
+        self.endpoint = endpoint
 
         self.session_widget = self.ipywidget_factory.get_text(
             description='Name:',
@@ -32,9 +31,9 @@ class CreateSessionWidget(AbstractMenuWidget):
             description='Create Session'
         )
 
-        self.children = [self.ipywidget_factory.get_html(value="<br/>", width="600px"), self.endpoints_dropdown_widget,
+        self.children = [self.ipywidget_factory.get_html(value="<br />", width="600px"), 
                          self.session_widget, self.lang_widget, self.properties,
-                         self.ipywidget_factory.get_html(value="<br/>", width="600px"), self.submit_widget]
+                         self.ipywidget_factory.get_html(value="<br />", width="600px"), self.submit_widget]
 
         for child in self.children:
             child.parent_widget = self
@@ -48,14 +47,17 @@ class CreateSessionWidget(AbstractMenuWidget):
             self.ipython_display.send_error("Session properties must be a valid JSON string. Error:\n{}".format(e))
             return
 
-        endpoint = self.endpoints_dropdown_widget.value
         language = self.lang_widget.value
         alias = self.session_widget.value
         skip = False
         properties = conf.get_session_properties(language)
-
+        properties["name"]= alias
+        properties["conf"]["spark.kubernetes.file.upload.path"] =  conf.s3_bucket()
+        properties["conf"]["spark.hadoop.fs.s3a.access.key"] =  conf.s3_access_key()
+        properties["conf"]["spark.hadoop.fs.s3a.secret.key"] = conf.s3_secret_key()
+		
         try:
-            self.spark_controller.add_session(alias, endpoint, skip, properties)
+            self.spark_controller.add_session(alias, self.endpoint, skip, properties)
         except ValueError as e:
             self.ipython_display.send_error("""Could not add session with
 name:

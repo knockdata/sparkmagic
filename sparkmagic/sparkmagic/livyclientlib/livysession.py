@@ -116,7 +116,10 @@ class LivySession(ObjectWithGuid):
         self.kind = kind
         self.id = session_id
         self.session_info = u""
-
+        self.name = u""
+        self.proxyUser = u""
+        self.owner = u""
+        
         self._heartbeat_thread = None
         if session_id == -1:
             self.status = constants.NOT_STARTED_SESSION_STATUS
@@ -137,6 +140,9 @@ class LivySession(ObjectWithGuid):
             r = self._http_client.post_session(self.properties)
             self.id = r[u"id"]
             self.status = str(r[u"state"])
+            self.name = str(r[u"name"])
+            self.proxyUser = str(r[u"proxyUser"])
+            self.owner = str(r[u"owner"])
 
             self.ipython_display.writeln(u"Starting Spark application")
 
@@ -152,7 +158,9 @@ class LivySession(ObjectWithGuid):
 
             html = get_sessions_info_html([self], self.id)
             self.ipython_display.html(html)
-
+            
+            self.ipython_display.writeln(u"SparkSession name {} proxyUser {} owner {}.".format(self.name,self.proxyUser,self.owner))
+            
             command = Command("spark")
             (success, out, mimetype) = command.execute(self)
 
